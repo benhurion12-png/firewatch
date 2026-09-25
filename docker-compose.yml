@@ -1,0 +1,114 @@
+name: firewatch
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: firewatch
+      POSTGRES_USER: firewatch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-firewatch-local-only}
+    ports: ["127.0.0.1:5435:5432"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firewatch -d firewatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports: ["127.0.0.1:1885:1883"]
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+  redpanda:
+    image: redpandadata/redpanda:v24.3.6
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:9094
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:9094
+    ports: ["127.0.0.1:9094:9094"]
+    volumes: [redpanda_data:/var/lib/redpanda/data]
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  topic-init:
+    image: redpandadata/redpanda:v24.3.6
+    depends_on:
+      redpanda: {condition: service_healthy}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - rpk topic create firewatch.telemetry.raw --brokers redpanda:9092 --partitions 1 --topic-config retention.ms=604800000 || rpk topic describe firewatch.telemetry.raw --brokers redpanda:9092
+  db-init:
+    build: ./services/api
+    environment: &api-env
+      DATABASE_URL: postgresql://firewatch:${POSTGRES_PASSWORD:-firewatch-local-only}@postgres:5432/firewatch
+      KAFKA_BROKER: redpanda:9092
+      PORT: 8000
+      APP_ORIGINS: ${APP_ORIGINS:-http://localhost:3002,http://127.0.0.1:3002}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@firewatch.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Create .env from .env.example}
+      MANAGER_EMAIL: ${MANAGER_EMAIL:-manager@firewatch.local}
+      MANAGER_PASSWORD: ${MANAGER_PASSWORD:?Create .env from .env.example}
+    depends_on:
+      postgres: {condition: service_healthy}
+    command: ["sh", "-c", "npx prisma db push && node dist/seed.js"]
+  api:
+    build: ./services/api
+    restart: unless-stopped
+    environment: *api-env
+    ports: ["127.0.0.1:8002:8000"]
+    depends_on:
+      db-init: {condition: service_completed_successfully}
+      topic-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+  mqtt-bridge:
+    build: ./services/mqtt-bridge
+    restart: unless-stopped
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      KAFKA_BROKER: redpanda:9092
+    depends_on:
+      mosquitto: {condition: service_started}
+      topic-init: {condition: service_completed_successfully}
+  sensor-simulator:
+    profiles: ["demo"]
+    build: ./services/sensor-simulator
+    restart: unless-stopped
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      SCENARIO: mixed
+      INTERVAL_SECONDS: 5
+    depends_on:
+      api: {condition: service_healthy}
+      mqtt-bridge: {condition: service_started}
+  frontend:
+    build:
+      context: ./next-frontend
+      args:
+        INTERNAL_API_URL: http://api:8000
+    restart: unless-stopped
+    ports: ["3002:3000"]
+    depends_on:
+      api: {condition: service_healthy}
+volumes:
+  postgres_data:
+  mqtt_data:
+  redpanda_data:

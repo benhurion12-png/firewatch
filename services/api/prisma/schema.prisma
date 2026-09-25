@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+enum SensorType {
+  HMP155
+  FS24X
+}
+model User {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  password String
+  role Role @default(VIEWER)
+  createdAt DateTime @default(now())
+  sessions Session[]
+}
+model Session {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+model ForestArea {
+  id String @id @default(uuid())
+  name String
+  location String
+  description String @default("")
+  lat Float
+  lng Float
+  hectares Float @default(0)
+  createdAt DateTime @default(now())
+  devices Device[]
+  readings Reading[]
+  assessments Assessment[]
+  events Event[]
+}
+model Device {
+  id String @id
+  name String
+  type SensorType
+  areaId String?
+  area ForestArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  assignedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  readings Reading[]
+  @@unique([areaId, type])
+}
+model Reading {
+  id String @id @default(uuid())
+  messageId String @unique
+  deviceId String
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  areaId String
+  area ForestArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  type SensorType
+  measuredAt DateTime
+  receivedAt DateTime @default(now())
+  temperatureC Float?
+  humidityPct Float?
+  flameDetected Boolean?
+  fault Boolean @default(false)
+  simulated Boolean @default(false)
+  @@index([areaId, deviceId, measuredAt])
+  @@index([areaId, measuredAt])
+}
+model Assessment {
+  id String @id @default(uuid())
+  areaId String
+  area ForestArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  score Float?
+  level String
+  quality String
+  result Json
+  createdAt DateTime @default(now())
+  @@index([areaId, createdAt])
+}
+model Event {
+  id String @id @default(uuid())
+  areaId String?
+  area ForestArea? @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  kind String
+  level String
+  message String
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  createdAt DateTime @default(now())
+  @@index([areaId, createdAt])
+}

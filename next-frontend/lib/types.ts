@@ -1,0 +1,10 @@
+export type Role='ADMIN'|'MANAGER'|'VIEWER';
+export type User={id:string;name:string;email:string;role:Role};
+export type Level='UNKNOWN'|'NORMAL'|'WARNING'|'HIGH'|'CRITICAL';
+export type Reading={id:string;deviceId:string;type:'HMP155'|'FS24X';measuredAt:string;temperatureC:number|null;humidityPct:number|null;flameDetected:boolean|null;fault:boolean;simulated:boolean};
+export type Risk={version:string;score:number|null;level:Level;quality:'COMPLETE'|'PARTIAL'|'OFFLINE';temperatureC:number|null;humidityPct:number|null;flameDetected:boolean|null;temperatureRate:number|null;humidityRate:number|null;contributions:{label:string;value:number;max:number}[];reasons:string[];forecast:number|null;measuredAt:string|null;simulated:boolean;recoverySince:string|null};
+export type Device={id:string;name:string;type:'HMP155'|'FS24X';areaId:string|null;area?:Area|null;lastReading?:Reading|null;assignedAt:string};
+export type Area={id:string;name:string;location:string;description:string;lat:number;lng:number;hectares:number;devices:Device[];risk:Risk};
+export type Event={id:string;areaId:string|null;area?:{name:string}|null;kind:string;level:Level;message:string;createdAt:string;acknowledgedAt:string|null;acknowledgedBy:string|null};
+export type Detail=Area&{history:{id:string;score:number|null;createdAt:string;result:Risk}[];readings:Reading[];events:Event[]};
+export type Dashboard={areas:Area[];brokerConnected:boolean;serverTime:string};
