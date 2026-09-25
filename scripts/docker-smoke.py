@@ -39,7 +39,7 @@ assert len(areas) == 3
 assert all(len(area["devices"]) == 2 and area["risk"]["quality"] == "COMPLETE" for area in areas)
 assert all(device["lastReading"] and device["lastReading"]["simulated"]
            for area in areas for device in area["devices"])
-assert all((datetime.now(timezone.utc) - datetime.fromisoformat(device["lastReading"]["measuredAt"].replace("Z", "+00:00"))).total_seconds() < 30
+assert all((datetime.now(timezone.utc) - datetime.fromisoformat(device["lastReading"]["measuredAt"].replace("Z", "+00:00"))).total_seconds() < 90
            for area in areas for device in area["devices"])
 
 message_id = str(uuid.uuid4())
@@ -82,8 +82,11 @@ if options.browser:
         expect(page.locator(".map-marker").first).to_be_visible(timeout=15000)
         expect(page.get_by_role("alert")).to_have_count(0)
         before = request("/areas/burabay")["readings"][0]["measuredAt"]
-        page.wait_for_timeout(6000)
-        after = request("/areas/burabay")["readings"][0]["measuredAt"]
+        deadline = time.monotonic() + 90
+        after = before
+        while after == before and time.monotonic() < deadline:
+            page.wait_for_timeout(3000)
+            after = request("/areas/burabay")["readings"][0]["measuredAt"]
         assert before != after, "Simulator stopped producing readings"
         output = ROOT / ".test-results"
         output.mkdir(exist_ok=True)

@@ -4,7 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 @Injectable()
 export class Db extends PrismaClient implements OnModuleDestroy {
   constructor() {
-    super({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+    super({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, max: Number(process.env.DB_POOL_MAX || 20) }) });
   }
   async onModuleDestroy() { await this.$disconnect(); }
 }

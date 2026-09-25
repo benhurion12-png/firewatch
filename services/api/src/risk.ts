@@ -30,11 +30,11 @@ export function fuse(samples: Sample[], now = Date.now(), previous?: Risk | null
   const ordered = samples.filter(s => ts(s) <= now + 5000).sort((a,b) => ts(b)-ts(a));
   const latest = (type: Sample['type']) => ordered.find(s => s.type === type);
   const rawH = latest('HMP155'), rawF = latest('FS24X');
-  const fresh = (s?: Sample) => !!s && now-ts(s) <= 120000;
+  const fresh = (s?: Sample) => !!s && now-ts(s) <= 180000;
   const h = fresh(rawH) && !rawH!.fault ? rawH : undefined;
   const f = fresh(rawF) && !rawF!.fault ? rawF : undefined;
   const temperature = h?.temperatureC ?? null, humidity = h?.humidityPct ?? null;
-  const synchronized = !!h && !!f && Math.abs(ts(h)-ts(f)) <= 30000;
+  const synchronized = !!h && !!f && Math.abs(ts(h)-ts(f)) <= 90000;
   const quality: Risk['quality'] = synchronized ? 'COMPLETE' : (h || f) ? 'PARTIAL' : 'OFFLINE';
   const history = h ? ordered.filter(s => s.type === 'HMP155' && s.deviceId === h.deviceId) : [];
   const tr = slope(history, 'temperatureC', now), hr = slope(history, 'humidityPct', now);
@@ -57,7 +57,7 @@ export function fuse(samples: Sample[], now = Date.now(), previous?: Risk | null
   if (!fresh(rawF)) reasons.push('Нет свежих данных FS24X');
   if (rawH?.fault) reasons.push('HMP155 сообщает о неисправности');
   if (rawF?.fault) reasons.push('FS24X сообщает о неисправности');
-  if (h && f && !synchronized) reasons.push('Измерения датчиков расходятся более чем на 30 секунд');
+  if (h && f && !synchronized) reasons.push('Измерения датчиков расходятся более чем на 90 секунд');
   if (temperature !== null && temperature >= 35) reasons.push('Повышенная температура');
   if (humidity !== null && humidity <= 30) reasons.push('Низкая относительная влажность');
   if (tr !== null && tr >= 1) reasons.push('Температура быстро растёт');

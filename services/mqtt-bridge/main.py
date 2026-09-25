@@ -6,7 +6,8 @@ import paho.mqtt.client as mqtt
 from processor import normalize
 
 producer = Producer({"bootstrap.servers": os.getenv("KAFKA_BROKER", "localhost:9094"),
-                     "enable.idempotence": True, "message.timeout.ms": 15000})
+                     "enable.idempotence": True, "message.timeout.ms": 15000,
+                     "linger.ms": 20})
 
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
@@ -20,17 +21,23 @@ def on_message(client, userdata, msg):
         print("Rejected packet:", str(exc), flush=True)
         client.ack(msg.mid, msg.qos)
         return
-    errors = []
-    def delivered(error, message):
+
+    # The MQTT ACK is sent only after Kafka confirmed the write. Delivery reports are served
+    # by producer.poll() in the main loop, so many packets are batched instead of flushed one by one.
+    def delivered(error, message, mid=msg.mid, qos=msg.qos):
         if error:
-            errors.append(str(error))
-    producer.produce("firewatch.telemetry.raw", key=value["deviceId"],
-                     value=json.dumps(value), on_delivery=delivered)
-    remaining = producer.flush(20)
-    if remaining or errors:
-        # Process restart reconnects the persistent MQTT session; no ACK means retry.
-        raise RuntimeError("Kafka delivery failed: " + str(errors))
-    client.ack(msg.mid, msg.qos)
+            # Without an ACK the broker redelivers after the restart of this process.
+            print("Kafka delivery failed, restarting:", str(error), flush=True)
+            os._exit(1)
+        client.ack(mid, qos)
+
+    while True:
+        try:
+            producer.produce("firewatch.telemetry.raw", key=value["deviceId"],
+                             value=json.dumps(value), on_delivery=delivered)
+            break
+        except BufferError:
+            producer.poll(0.1)
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="firewatch-bridge",
                      clean_session=False, manual_ack=True)
@@ -45,4 +52,10 @@ while True:
     except OSError as exc:
         print("Waiting for MQTT:", exc, flush=True)
         time.sleep(3)
-client.loop_forever(retry_first_connection=True)
+client.loop_start()
+try:
+    while True:
+        producer.poll(0.05)
+finally:
+    client.loop_stop()
+    producer.flush(10)

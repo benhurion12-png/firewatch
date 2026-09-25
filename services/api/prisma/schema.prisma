@@ -71,7 +71,7 @@ model Reading {
   flameDetected Boolean?
   fault Boolean @default(false)
   simulated Boolean @default(false)
-  @@index([areaId, deviceId, measuredAt])
+  @@index([deviceId, measuredAt])
   @@index([areaId, measuredAt])
 }
 model Assessment {

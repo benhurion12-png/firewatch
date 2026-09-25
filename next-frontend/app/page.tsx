@@ -14,7 +14,7 @@ export default function DashboardPage(){
  if(error)return <ErrorBox message={error.message}/>;
  if(!data)return <Loading/>;
  const {areas}=data,alerts=areas.filter(a=>['HIGH','CRITICAL'].includes(a.risk.level));
- const connected=areas.flatMap(a=>a.devices).filter(d=>d.lastReading&&new Date(data.serverTime).getTime()-new Date(d.lastReading.measuredAt).getTime()<120000&&!d.lastReading.fault).length;
+ const connected=areas.flatMap(a=>a.devices).filter(d=>d.lastReading&&new Date(data.serverTime).getTime()-new Date(d.lastReading.measuredAt).getTime()<180000&&!d.lastReading.fault).length;
  const total=areas.reduce((n,a)=>n+a.hectares,0),simulated=areas.some(a=>a.risk.simulated);
  return <>
   <PageHeading eyebrow="ОБЗОР СИСТЕМЫ" title="Лес под наблюдением" description="Всё, что нужно знать о состоянии ваших лесных участков." action={<Link href="/areas" className="button primary"><Icon name="plus" size={17}/>Управление участками</Link>}/>

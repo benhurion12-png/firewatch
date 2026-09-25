@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { Auth, Public, Roles, cookieName, cookieOptions, safeUser } from './auth';
 import { Db } from './prisma.service';
 import { Monitor } from './monitor.service';
-import { AreaDto, AssignDto, DeviceDto, LoginDto, RegisterDto, RoleDto } from './dto';
+import { AreaDto, AssignDto, DeviceDto, LoginDto, RecordingDto, RegisterDto, RoleDto } from './dto';
 @Controller()
 export class AppController {
   constructor(private auth:Auth,private db:Db,private monitor:Monitor) {}
@@ -19,6 +19,7 @@ export class AppController {
     await this.auth.logout(req.cookies?.[cookieName]);res.clearCookie(cookieName,{...cookieOptions(),maxAge:undefined});return {ok:true};
   }
   @Get('dashboard') dashboard() {return this.monitor.dashboard();}
+  @Roles('ADMIN') @Patch('recording') recording(@Body() dto:RecordingDto,@Req() req) {return this.monitor.setRecording(dto.enabled,req.user.email);}
   @Get('areas/:id') detail(@Param('id') id:string) {return this.monitor.detail(id);}
   @Roles('ADMIN','MANAGER') @Post('areas') createArea(@Body() dto:AreaDto,@Req() req) {return this.monitor.createArea(dto,req.user.email);}
   @Roles('ADMIN','MANAGER') @Put('areas/:id') updateArea(@Param('id') id:string,@Body() dto:AreaDto,@Req() req) {return this.monitor.updateArea(id,dto,req.user.email);}

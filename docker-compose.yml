@@ -48,13 +48,19 @@ services:
       redpanda: {condition: service_healthy}
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - rpk topic create firewatch.telemetry.raw --brokers redpanda:9092 --partitions 1 --topic-config retention.ms=604800000 || rpk topic describe firewatch.telemetry.raw --brokers redpanda:9092
+      - |
+        T=firewatch.telemetry.raw; B=redpanda:9092; WANT=12
+        rpk topic create $$T --brokers $$B --partitions $$WANT --topic-config retention.ms=604800000 && exit 0
+        HAVE=$$(rpk topic describe $$T --brokers $$B -s | awk '/PARTITIONS/{print $$2}')
+        if [ "$$HAVE" -lt "$$WANT" ]; then rpk topic add-partitions $$T --brokers $$B --num $$(($$WANT-$$HAVE)); fi
+        rpk topic describe $$T --brokers $$B
   db-init:
     build: ./services/api
     environment: &api-env
       DATABASE_URL: postgresql://firewatch:${POSTGRES_PASSWORD:-firewatch-local-only}@postgres:5432/firewatch
       KAFKA_BROKER: redpanda:9092
       PORT: 8000
+      RETENTION_DAYS: ${RETENTION_DAYS:-7}
       APP_ORIGINS: ${APP_ORIGINS:-http://localhost:3002,http://127.0.0.1:3002}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@firewatch.local}
@@ -95,7 +101,7 @@ services:
       MQTT_HOST: mosquitto
       MQTT_PORT: 1883
       SCENARIO: mixed
-      INTERVAL_SECONDS: 5
+      INTERVAL_SECONDS: ${SENSOR_INTERVAL_SECONDS:-60}
     depends_on:
       api: {condition: service_healthy}
       mqtt-bridge: {condition: service_started}

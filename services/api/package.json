@@ -22,6 +22,7 @@
     "studio": "prisma studio",
     "seed": "node dist/seed.js",
     "test:integration": "npm run build && node test/integration.cjs",
+    "test:load": "npm run build && node test/load.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

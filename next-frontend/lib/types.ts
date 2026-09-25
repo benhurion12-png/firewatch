@@ -7,4 +7,4 @@ export type Device={id:string;name:string;type:'HMP155'|'FS24X';areaId:string|nu
 export type Area={id:string;name:string;location:string;description:string;lat:number;lng:number;hectares:number;devices:Device[];risk:Risk};
 export type Event={id:string;areaId:string|null;area?:{name:string}|null;kind:string;level:Level;message:string;createdAt:string;acknowledgedAt:string|null;acknowledgedBy:string|null};
 export type Detail=Area&{history:{id:string;score:number|null;createdAt:string;result:Risk}[];readings:Reading[];events:Event[]};
-export type Dashboard={areas:Area[];brokerConnected:boolean;serverTime:string};
+export type Dashboard={areas:Area[];brokerConnected:boolean;recording:boolean;serverTime:string};

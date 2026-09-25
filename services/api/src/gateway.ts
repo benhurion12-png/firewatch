@@ -25,6 +25,16 @@ export class LiveGateway implements OnGatewayInit, OnModuleDestroy {
       }
     },30000);
   }
-  changed() { this.server?.emit('changed'); }
-  onModuleDestroy() { if(this.timer) clearInterval(this.timer); }
+  // Leading + trailing throttle: the first signal goes out at once, bursts collapse into one more after the window.
+  private cooldown?: NodeJS.Timeout;
+  private pending = false;
+  changed() {
+    if (this.cooldown) { this.pending = true; return; }
+    this.server?.emit('changed');
+    this.cooldown = setTimeout(() => {
+      this.cooldown = undefined;
+      if (this.pending) { this.pending = false; this.changed(); }
+    },2000);
+  }
+  onModuleDestroy() { if(this.timer) clearInterval(this.timer); if(this.cooldown) clearTimeout(this.cooldown); }
 }

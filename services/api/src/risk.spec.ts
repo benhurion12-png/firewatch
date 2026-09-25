@@ -8,14 +8,14 @@ describe('Sensor fusion safety and time semantics',()=>{
  test('flame alone immediately critical even without environment sensor',()=>{const r=fuse([f(true)],now);expect(r.level).toBe('CRITICAL');expect(r.score).toBeGreaterThanOrEqual(90);expect(r.quality).toBe('PARTIAL');});
  test('extreme hot dry air without flame never implies confirmed critical fire',()=>{expect(fuse([h(0,60,0),f()],now).level).not.toBe('CRITICAL');});
  test('combined adverse trends reach HIGH',()=>{const r=fuse([h(60000,42,30),h(30000,47,20),h(0,52,10),f()],now);expect(r.level).toBe('HIGH');expect(r.temperatureRate).toBeCloseTo(10);expect(r.forecast).toBeGreaterThanOrEqual(r.score!);});
- test('all stale data yields UNKNOWN, not NORMAL',()=>{const r=fuse([h(121000),f(false,121000)],now);expect(r.level).toBe('UNKNOWN');expect(r.score).toBeNull();});
+ test('all stale data yields UNKNOWN, not NORMAL',()=>{const r=fuse([h(181000),f(false,181000)],now);expect(r.level).toBe('UNKNOWN');expect(r.score).toBeNull();});
  test('no environment measurement does not produce a fabricated zero score',()=>expect(fuse([f()],now).score).toBeNull());
  test('partial calm data is UNKNOWN',()=>expect(fuse([h()],now).level).toBe('UNKNOWN'));
- test('timestamp skew lowers quality',()=>{expect(fuse([h(31000),f()],now).quality).toBe('PARTIAL');});
+ test('timestamp skew lowers quality',()=>{expect(fuse([h(91000),f()],now).quality).toBe('PARTIAL');});
  test('latest fault supersedes previous good value',()=>{const r=fuse([h(),f(true,5000),{...f(),fault:true}],now);expect(r.flameDetected).toBeNull();expect(r.quality).toBe('PARTIAL');});
  test('out-of-order records cannot overwrite newer observations',()=>{expect(fuse([h(),f(false),f(true,300000)],now).level).toBe('NORMAL');});
  test('trend waits for minimum duration',()=>{expect(fuse([h(10000),h(5000),h(),f()],now).temperatureRate).toBeNull();});
- test('loss of signal latches an existing alarm',()=>{const old=fuse([h(),f(true)],now);const r=fuse([],now+180000,old);expect(r.level).toBe('CRITICAL');expect(r.quality).toBe('OFFLINE');});
+ test('loss of signal latches an existing alarm',()=>{const old=fuse([h(),f(true)],now);const r=fuse([],now+240000,old);expect(r.level).toBe('CRITICAL');expect(r.quality).toBe('OFFLINE');});
  test('recovery requires 60 continuous seconds and full good data',()=>{
   const old=fuse([h(),f(true)],now);
   const pending=fuse([h(),f()],now+1000,old);

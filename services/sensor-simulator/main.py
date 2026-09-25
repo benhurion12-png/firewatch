@@ -40,7 +40,7 @@ try:
                                else dict(flame_detected=scenario == "fire" and phase > 0.4))
                 result = client.publish(f"firewatch/nodes/{device_id}/telemetry", json.dumps(message), qos=1, retain=False)
                 result.wait_for_publish(timeout=10)
-        time.sleep(max(1, float(os.getenv("INTERVAL_SECONDS", "5"))))
+        time.sleep(max(1, float(os.getenv("INTERVAL_SECONDS", "60"))))
 finally:
     client.loop_stop()
     client.disconnect()

@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsNumber, IsOptional, IsString, Length, Matches, Max, Min, MinLength, MaxLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsNumber, IsOptional, IsString, Length, Matches, Max, Min, MinLength, MaxLength } from 'class-validator';
 export class LoginDto {
   @IsEmail() email: string;
   @IsString() @MinLength(10) @MaxLength(72) password: string;
@@ -26,4 +26,7 @@ export class AssignDto {
 }
 export class RoleDto {
   @IsIn(['ADMIN','MANAGER','VIEWER']) role: 'ADMIN' | 'MANAGER' | 'VIEWER';
+}
+export class RecordingDto {
+  @IsBoolean() enabled: boolean;
 }
