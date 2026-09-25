@@ -61,6 +61,7 @@ services:
       KAFKA_BROKER: redpanda:9092
       PORT: 8000
       RETENTION_DAYS: ${RETENTION_DAYS:-7}
+      SIMULATOR_TOKEN: ${SIMULATOR_TOKEN:-${POSTGRES_PASSWORD:-firewatch-local-only}}
       APP_ORIGINS: ${APP_ORIGINS:-http://localhost:3002,http://127.0.0.1:3002}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@firewatch.local}
@@ -102,6 +103,8 @@ services:
       MQTT_PORT: 1883
       SCENARIO: mixed
       INTERVAL_SECONDS: ${SENSOR_INTERVAL_SECONDS:-60}
+      SIMULATOR_API_URL: http://api:8000/api/simulator/devices
+      SIMULATOR_TOKEN: ${SIMULATOR_TOKEN:-${POSTGRES_PASSWORD:-firewatch-local-only}}
     depends_on:
       api: {condition: service_healthy}
       mqtt-bridge: {condition: service_started}

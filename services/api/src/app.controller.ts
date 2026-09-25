@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, Res, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Req, Res, ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 import type { Response } from 'express';
 import { Auth, Public, Roles, cookieName, cookieOptions, safeUser } from './auth';
 import { Db } from './prisma.service';
@@ -17,6 +18,12 @@ export class AppController {
   @Get('auth/me') me(@Req() req) {return req.user;}
   @Public() @Post('auth/logout') async logout(@Req() req,@Res({passthrough:true}) res:Response) {
     await this.auth.logout(req.cookies?.[cookieName]);res.clearCookie(cookieName,{...cookieOptions(),maxAge:undefined});return {ok:true};
+  }
+  // Demo simulator only: lists registered devices so it can publish for them. Disabled unless SIMULATOR_TOKEN is set.
+  @Public() @Get('simulator/devices') simulatorDevices(@Headers('x-simulator-token') token?:string) {
+    const expected=Buffer.from(process.env.SIMULATOR_TOKEN||''),given=Buffer.from(token||'');
+    if(!expected.length||expected.length!==given.length||!timingSafeEqual(expected,given)) throw new NotFoundException();
+    return this.db.device.findMany({where:{areaId:{not:null}},select:{id:true,type:true,areaId:true}});
   }
   @Get('dashboard') dashboard() {return this.monitor.dashboard();}
   @Roles('ADMIN') @Patch('recording') recording(@Body() dto:RecordingDto,@Req() req) {return this.monitor.setRecording(dto.enabled,req.user.email);}
